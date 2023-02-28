@@ -1,0 +1,107 @@
+# "connect" to localhost to execute commands
+- hosts: localhost
+  gather_facts: no
+  tasks:
+  - name:
+    # confirm that boto3 is installed using pip
+    pip:
+      name: boto3
+      state: present
+
+  # terminate ec2 instances tagged/named "ansible_demo" by declaring a goal state of absent (terminated)
+  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html
+  - name: terminate existing ansible_demo instances
+    amazon.aws.ec2_instance:
+      state: absent
+      region: "{{ lookup('ansible.builtin.env', 'region') }}"
+      filters:
+        "tag:Name": "ansible_demo"
+      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
+      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+
+  # look-up the list of subnets and register the output and store it as variable "subnet_info"
+  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_vpc_subnet_info_module.html
+  - amazon.aws.ec2_vpc_subnet_info:
+      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
+      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+      region: "{{ lookup('ansible.builtin.env', 'region') }}"
+    register: subnet_info
+
+  # security group to be attached to the ec2
+  # allow all SSH traffic through port 22
+  # allow all HTTP traffic through port 80
+  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_group_module.html
+  - name: creating security group to be used for ansible_demo ec2
+    amazon.aws.ec2_group:
+      name: WebSG
+      description: open ports for http and ssh
+      region: "{{ lookup('ansible.builtin.env', 'region') }}"
+      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
+      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+      rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      rules_egress:
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+
+  # Key pair for ec2 ssh authentication
+  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_key_module.html
+  - name: create new ec2 key pair using a public ssh key
+    amazon.aws.ec2_key:
+      name: webkey
+      region: "{{ lookup('ansible.builtin.env', 'region') }}"
+      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
+      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+      key_material: "{{ lookup('ansible.builtin.env', 'ssh_public_key') }}"
+
+  # ec2 instance using Amazon Linux 2 AMI (https://aws.amazon.com/marketplace/pp/prodview-zc4x2k7vt6rpu)
+  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html
+  - name: launching ec2 instance for ansible_demo
+    amazon.aws.ec2_instance:
+      key_name: webkey # use previously created key pair for authentication
+      instance_type: t2.micro
+      image_id: ami-0dfcb1ef8550277af
+      state: running # we want the goal state to be running
+      wait: true # wait for the goal state to be reached before moving on
+      security_group: WebSG # use previously created security group
+      count: 1 # only launch 1 instance
+      vpc_subnet_id: "{{ subnet_info.subnets[0].id }}" # fetch the first subnet id from the earlier fetched list
+      network:
+        assign_public_ip: true
+      region: "{{ lookup('ansible.builtin.env', 'region') }}"
+      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
+      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+      tags:
+        Name: ansible_demo # the name for the ec2 instance
+    register: ec2 
+
+  - name: add all newly created instances to ansible_demo_host_group
+    add_host:
+      hostname: "{{ item.public_ip_address }}"
+      groupname: ansible_demo_host_group
+    loop: "{{ ec2.instances }}"
+
+  - name: wait for ssh to come up
+    wait_for:
+      host: "{{ item.public_dns_name }}"
+      port: 22
+      state: started
+    loop: "{{ ec2.instances }}"
+
+# connect to ec2 instances to run the httpdserver role
+- hosts: ansible_demo_host_group
+  gather_facts: no
+  remote_user: ec2-user # default aws ec2 linux user is ec2-user
+  become_method: sudo 
+  become: yes
+  tasks:
+  - name: running role
+    include_role:
+      name: httpdserver
