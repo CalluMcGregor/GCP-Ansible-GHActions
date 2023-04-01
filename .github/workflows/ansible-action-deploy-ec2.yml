@@ -1,4 +1,4 @@
-name: deployAnsibleEC2
+name: deployAnsibleGCP
 
 on: [push, workflow_dispatch]
 
@@ -19,15 +19,18 @@ jobs:
       run: |
         cd ..
         ls -lart
+    - name: Set up GCP credentials
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        project_id: ${{ secrets.gcp_project_id }}
+        service_account_key: ${{ secrets.gcp_credentials }}
     - name: Run playbook
       uses: dawidd6/action-ansible-playbook@v2
       env:
         region: ${{ vars.region }}
-        access_key: ${{ secrets.access_key }}
-        secret_key: ${{ secrets.secret_key }}
         ssh_public_key: ${{ secrets.ssh_public_key }}
       with:
-        key: ${{secrets.ssh_private_key}}
-        playbook: ansible/deploy-ec2.yml
+        service_account_key: ${{ secrets.gcp_credentials }}
+        playbook: ansible/deploy-gcp.yml
         options: |
           --verbose

@@ -29,11 +29,3 @@ A Cloud Guru Account with access to AWS Cloud Sandbox
 5. Go to the actions tab on the repo
 6. Click on "Run workflow"
 7. Once completed, view the Run playbook, go to the bottom of the log and connect to the ip address that's under the PLAY RECAP
-
-# Appendix
-#### Secrets
-
-![secrets](secrets_screenshot.png)
-
-### Variables
-![variables](variables_screenshot.png)
