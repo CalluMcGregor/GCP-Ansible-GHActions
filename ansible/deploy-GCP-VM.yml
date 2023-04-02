@@ -3,10 +3,12 @@
   gather_facts: no
   tasks:
   - name:
-    # confirm that boto3 is installed using pip
-    pip:
-      name: boto3
+# confirm that the google-auth and google-cloud-compute Python packages are installed using pip
+      name: 
+        - google-auth
+        - google-cloud-compute
       state: present
+# line 10 checks if the above packages are installed, if they aren't ansible will install, if they are, ansible will proceed as normal
 
   # terminate ec2 instances tagged/named "ansible_demo" by declaring a goal state of absent (terminated)
   # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html
