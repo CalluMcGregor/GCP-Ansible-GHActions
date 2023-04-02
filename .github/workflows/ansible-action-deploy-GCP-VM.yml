@@ -1,0 +1,27 @@
+name: deployAnsibleGCP
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout my repo
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y python3 python3-pip
+        sudo pip3 install google-auth google-auth-oauthlib google-auth-httplib2 google-cloud-compute ansible
+
+    - name: Set up GCP authentication
+      uses: google-github-actions/setup-gcloud@v0.2.1
+      with:
+        project_id: ${{ secrets.PROJECT_ID }}
+        credentials: ${{ secrets.CREDENTIALS_FILE }}
+
+    - name: Run Ansible playbook
+      run: |
+        ansible-playbook -i 'localhost,' -c local ansible/deploy-gcp.yml --extra-vars "zone=us-central1-a"
+      env:
+        GOOGLE_CLOUD_PROJECT: ${{ secrets.PROJECT_ID }}
