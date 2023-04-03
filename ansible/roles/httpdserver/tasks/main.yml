@@ -1,14 +1,14 @@
 ---
 # tasks file for httpdserver
-- name: install httpd
+- name: install apache2
   package:
-    name: httpd
+    name: apache2
     state: present
 - name: copy code
   copy:
     src: ./index.html
     dest: "/var/www/html/index.html"
-- name: start httpd
+- name: start apache2
   service:
-    name: httpd
+    name: apache2
     state: started
