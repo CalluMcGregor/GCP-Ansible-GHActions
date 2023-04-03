@@ -10,6 +10,7 @@
       state: present
 # line 10 checks if the above packages are installed, if they aren't ansible will install, if they are, ansible will proceed as normal
 
+
 # terminate GCP instances tagged/named "instance-1" by declaring a goal state of absent (terminated)
 - name: terminate existing instance-1 instances
   community.general.gcp_compute_instance:
