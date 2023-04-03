@@ -7,21 +7,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout my repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - name: Install dependencies
+    - name: print current working directory
       run: |
-        sudo apt-get update && sudo apt-get install -y python3 python3-pip
-        sudo pip3 install google-auth google-auth-oauthlib google-auth-httplib2 google-cloud-compute ansible
-
-    - name: Set up GCP authentication
-      uses: google-github-actions/setup-gcloud@v0.2.1
-      with:
-        project_id: ${{ secrets.PROJECT_ID }}
-        credentials_file: ${{ secrets.CREDENTIALS_FILE }}
-
-    - name: Run Ansible playbook
+        pwd
+    - name: list directory contents
       run: |
-        ansible-playbook -i 'localhost,' -c local ansible/deploy-GCP-VM.yml --extra-vars "zone=us-central1-a"
+        ls -lart
+    - name: list directory contents of directory one level up
+      run: |
+        cd ..
+        ls -lart
+    - name: Run playbook
+      uses: dawidd6/action-ansible-playbook@v2
       env:
-        GOOGLE_CLOUD_PROJECT: ${{ secrets.PROJECT_ID }}
+        credentials_file: ${{ secrets.credentials_file }}
+        project_id: ${{ secrets.project_id }}
+        instance_name: ${{ vars.instance_name }}
+        zone: ${{ vars.zone }}
+        remote_user: ${{ vars.remote_user }}
+        ssh_public_key: ${{ secrets.ssh_public_key }}
+      with:
+        key: ${{secrets.ssh_private_key}}
+        playbook: ansible/deploy-gcp.yml
+        options: |
+          --verbose
