@@ -60,41 +60,52 @@
     public_key_file: "{{ lookup('file',lookup('ansible.builtin.env', 'SSH_PUBLIC_KEY')) }}"
     state: present
 
-# Launching GCP instance for instance-1
-- name: launching GCP instance for instance-1
-  gcp_compute_instance:
-    name: instance-1
-    machine_type: f1-micro
-    zone: "{{ lookup('ansible.builtin.env', 'zone') }}"
-    tags:
-      items:
-        - instance-1
-    boot_disk_auto_delete: true
-    boot_disk_initialize_params:
-      source_image: projects/debian-cloud/global/images/family/debian-10
-    network_interfaces:
+- name: create GCP instance
+    google.cloud.gcp_compute_instance:
+      name: ansible-demo
+      project: "{{ lookup('ansible.builtin.env','project_id') }}"
+      zone: "{{ lookup('ansible.builtin.env','zone') }}"
+      auth_kind: serviceaccount
+      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
+      machine_type: f1-micro
+      disks:
+      - boot: true
+        auto_delete: true
+        initialize_params:
+          source_image: projects/debian-cloud/global/images/debian-10-buster-v20230206
+      network_interfaces:
       - access_configs:
-          - name: External NAT
-            type: ONE_TO_ONE_NAT
-        network: global/networks/default
-    project_id: "{{ lookup('ansible.builtin.env', 'PROJECT_ID') }}"
-    auth_kind: serviceaccount
-    service_account_file: "{{ lookup('env', 'CREDENTIALS_FILE') }}"
-  register: instance
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+        network: {"selfLink": "global/networks/default"}
+      metadata:
+        enable-oslogin: FALSE
+        enable-windows-ssh: TRUE
+        ssh-keys: "{{ lookup('ansible.builtin.env', 'ssh_public_key') }}"
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            sudo apt-get update
+            sudo apt-get install -y apache2
+      tags:
+        items:
+        - http-server
+    register: gcp_compute_instance
 
-  - name: add all newly created instances to ansible_demo_host_group
+  - debug:
+      var: gcp_compute_instance
+
+  - name: add newly created instance to GCP instance group
     add_host:
-      hostname: "{{ item.networkInterfaces[0].accessConfigs[0].natIP }}"
+      hostname: "{{ gcp_compute_instance.networkInterfaces[0].accessConfigs[0].natIP }}"
       groupname: ansible_demo_host_group
-    loop: "{{ gce.instances }}"
 
   - name: wait for ssh to come up
     wait_for:
-      host: "{{ item.networkInterfaces[0].accessConfigs[0].natIP }}"
+      host: "{{ gcp_compute_instance.networkInterfaces[0].accessConfigs[0].natIP }}"
       port: 22
       state: started
-    loop: "{{ gce.instances }}"
-
 
 # connect to GCE instances to run the httpdserver role
 - hosts: ansible_demo_host_group
