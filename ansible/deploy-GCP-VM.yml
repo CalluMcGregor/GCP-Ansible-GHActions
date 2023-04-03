@@ -66,7 +66,7 @@
       project: "{{ lookup('ansible.builtin.env','project_id') }}"
       zone: "{{ lookup('ansible.builtin.env','zone') }}"
       auth_kind: serviceaccount
-      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
+      service_account_contents: "{{ lookup('ansible.builtin.env','CREDENTIALS_FILE') }}"
       machine_type: f1-micro
       disks:
       - boot: true

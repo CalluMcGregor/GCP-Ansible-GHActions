@@ -18,7 +18,7 @@ jobs:
       uses: google-github-actions/setup-gcloud@v0.2.1
       with:
         project_id: ${{ secrets.PROJECT_ID }}
-        credentials: ${{ secrets.CREDENTIALS_FILE }}
+        credentials_file: ${{ secrets.CREDENTIALS_FILE }}
 
     - name: Run Ansible playbook
       run: |
