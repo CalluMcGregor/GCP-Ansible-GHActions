@@ -3,70 +3,60 @@
   gather_facts: no
   tasks:
   - name:
-# confirm that the google-auth and google-cloud-compute Python packages are installed using pip
-      name: 
+    # confirm that the google-auth and google-cloud-sdk Python packages are installed using pip
+    pip:
+      name:
         - google-auth
         - google-cloud-compute
       state: present
-# line 10 checks if the above packages are installed, if they aren't ansible will install, if they are, ansible will proceed as normal
 
-
-# terminate GCP instances tagged/named "instance-1" by declaring a goal state of absent (terminated)
-- name: terminate existing instance-1 instances
-  community.general.gcp_compute_instance:
-    name: "instance-1"
-    zone: "{{ lookup('ansible.builtin.env','zone') }}"
-    project: "{{ lookup('ansible.builtin.env','PROJECT_ID') }}"
-    auth_kind: serviceaccount
-    service_account_file: "{{ lookup('ansible.builtin.env','CREDENTIALS_FILE') }}"
-    state: absent
-
-# Look up the list of subnets and register the output and store it as variable "subnet_info"
-- name: Get subnet info
-  community.gcp.gcp_compute_subnetwork_info:
-    project: "{{ lookup('ansible.builtin.env', 'PROJECT_ID') }}"
-    auth_kind: serviceaccount
-    service_account_file: "{{ lookup('ansible.builtin.env', 'CREDENTIALS_FILE') }}"
-  register: subnet_info
-
-# Creates a security group named "WebSG" with rules to allow SSH traffic through port 22 and HTTP traffic through port 80, 
-# and egress traffic for all protocols and IPs, using GCP's "gcp_compute_firewall" module.
-- name: creating firewall rule for instance-1 instance
-  gcp_compute_firewall:
-    name: web-fw
-    direction: ingress
-    priority: 1000
-    source_ranges:
-    - 0.0.0.0/0
-    allowed:
-    - IPProtocol: tcp
-      ports:
-      - 22
-    - IPProtocol: tcp
-      ports:
-      - 80
-    network: default
-    project: "{{ lookup('ansible.builtin.env', 'PROJECT_ID') }}"
-    auth_kind: serviceaccount
-    service_account_file: "{{ lookup('ansible.builtin.env', 'CREDENTIALS_FILE') }}"
-  register: firewall_info
-
-# Key pair for instance ssh authentication
-- name: create new instance ssh key pair using a public ssh key
-  google.cloud.gcp_compute_ssh_key:
-    name: webkey
-    project: "{{ lookup('ansible.builtin.env','PROJECT_ID') }}"
-    private_key_file: "{{ lookup('file',lookup('ansible.builtin.env', 'SSH_PRIVATE_KEY')) }}"
-    public_key_file: "{{ lookup('file',lookup('ansible.builtin.env', 'SSH_PUBLIC_KEY')) }}"
-    state: present
-
-- name: create GCP instance
+  # delete GCP instances named "ansible-demo" by declaring a goal state of absent (deleted)
+  # https://docs.ansible.com/ansible/latest/collections/google/cloud/gcp_compute_instance_module.html
+  - name: delete existing ansible-demo instances
     google.cloud.gcp_compute_instance:
       name: ansible-demo
       project: "{{ lookup('ansible.builtin.env','project_id') }}"
       zone: "{{ lookup('ansible.builtin.env','zone') }}"
       auth_kind: serviceaccount
-      service_account_contents: "{{ lookup('ansible.builtin.env','CREDENTIALS_FILE') }}"
+      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
+      state: absent
+
+  # look-up the list of subnets and register the output and store it as variable "subnet_info"
+  # https://docs.ansible.com/ansible/latest/collections/google/cloud/gcp_compute_subnetwork_info_module.html
+  - name: get subnet info
+    google.cloud.gcp_compute_subnetwork_info:
+      project: "{{ lookup('ansible.builtin.env','project_id') }}"
+      region: us-central1
+      auth_kind: serviceaccount
+      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
+    register: subnet_info
+
+  # create firewall rule to allow incoming traffic on SSH and HTTP
+  # https://docs.ansible.com/ansible/latest/collections/google/cloud/gcp_compute_firewall_module.html
+  - name: allow SSH and HTTP traffic
+    google.cloud.gcp_compute_firewall:
+      project: "{{ lookup('ansible.builtin.env','project_id') }}"
+      name: webfw
+      auth_kind: serviceaccount
+      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
+      network: {"selfLink": "global/networks/default"}
+      allowed:
+      - ip_protocol: tcp
+        ports:
+        - "80"
+        - "22"
+      source_ranges:
+      -  0.0.0.0/0
+
+  # create instance with a startup script that installs Apache HTTP Server
+  # https://docs.ansible.com/ansible/latest/collections/google/cloud/gcp_compute_instance_module.html
+  - name: create GCP instance
+    google.cloud.gcp_compute_instance:
+      name: ansible-demo
+      project: "{{ lookup('ansible.builtin.env','project_id') }}"
+      zone: "{{ lookup('ansible.builtin.env','zone') }}"
+      auth_kind: serviceaccount
+      service_account_contents: "{{ lookup('ansible.builtin.env','credentials_file') }}"
       machine_type: f1-micro
       disks:
       - boot: true
@@ -107,10 +97,10 @@
       port: 22
       state: started
 
-# connect to GCE instances to run the httpdserver role
+    # connect to GCP instances to run the httpd
 - hosts: ansible_demo_host_group
   gather_facts: no
-  remote_user: ansible # default GCE Linux user is ansible
+  remote_user: "{{ lookup('ansible.builtin.env','remote_user') }}"
   become_method: sudo 
   become: yes
   tasks:
