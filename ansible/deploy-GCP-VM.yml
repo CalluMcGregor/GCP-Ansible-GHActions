@@ -20,47 +20,44 @@
     service_account_file: "{{ lookup('ansible.builtin.env','CREDENTIALS_FILE') }}"
     state: absent
 
-  # look-up the list of subnets and register the output and store it as variable "subnet_info"
-  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_vpc_subnet_info_module.html
-  - amazon.aws.ec2_vpc_subnet_info:
-      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
-      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
-      region: "{{ lookup('ansible.builtin.env', 'region') }}"
-    register: subnet_info
+# Look up the list of subnets and register the output and store it as variable "subnet_info"
+- name: Get subnet info
+  community.gcp.gcp_compute_subnetwork_info:
+    project: "{{ lookup('ansible.builtin.env', 'PROJECT_ID') }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ lookup('ansible.builtin.env', 'CREDENTIALS_FILE') }}"
+  register: subnet_info
 
-  # security group to be attached to the ec2
-  # allow all SSH traffic through port 22
-  # allow all HTTP traffic through port 80
-  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_group_module.html
-  - name: creating security group to be used for ansible_demo ec2
-    amazon.aws.ec2_group:
-      name: WebSG
-      description: open ports for http and ssh
-      region: "{{ lookup('ansible.builtin.env', 'region') }}"
-      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
-      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
-      rules:
-      - proto: tcp
-        from_port: 22
-        to_port: 22
-        cidr_ip: 0.0.0.0/0
-      - proto: tcp
-        from_port: 80
-        to_port: 80
-        cidr_ip: 0.0.0.0/0
-      rules_egress:
-      - proto: all
-        cidr_ip: 0.0.0.0/0
+# Creates a security group named "WebSG" with rules to allow SSH traffic through port 22 and HTTP traffic through port 80, 
+# and egress traffic for all protocols and IPs, using GCP's "gcp_compute_firewall" module.
+- name: creating firewall rule for instance-1 instance
+  gcp_compute_firewall:
+    name: web-fw
+    direction: ingress
+    priority: 1000
+    source_ranges:
+    - 0.0.0.0/0
+    allowed:
+    - IPProtocol: tcp
+      ports:
+      - 22
+    - IPProtocol: tcp
+      ports:
+      - 80
+    network: default
+    project: "{{ lookup('ansible.builtin.env', 'PROJECT_ID') }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ lookup('ansible.builtin.env', 'CREDENTIALS_FILE') }}"
+  register: firewall_info
 
-  # Key pair for ec2 ssh authentication
-  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_key_module.html
-  - name: create new ec2 key pair using a public ssh key
-    amazon.aws.ec2_key:
-      name: webkey
-      region: "{{ lookup('ansible.builtin.env', 'region') }}"
-      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
-      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
-      key_material: "{{ lookup('ansible.builtin.env', 'ssh_public_key') }}"
+# Key pair for instance ssh authentication
+- name: create new instance ssh key pair using a public ssh key
+  google.cloud.gcp_compute_ssh_key:
+    name: webkey
+    project: "{{ lookup('ansible.builtin.env','PROJECT_ID') }}"
+    private_key_file: "{{ lookup('file',lookup('ansible.builtin.env', 'SSH_PRIVATE_KEY')) }}"
+    public_key_file: "{{ lookup('file',lookup('ansible.builtin.env', 'SSH_PUBLIC_KEY')) }}"
+    state: present
 
   # ec2 instance using Amazon Linux 2 AMI (https://aws.amazon.com/marketplace/pp/prodview-zc4x2k7vt6rpu)
   # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html
