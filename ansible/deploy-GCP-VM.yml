@@ -10,16 +10,15 @@
       state: present
 # line 10 checks if the above packages are installed, if they aren't ansible will install, if they are, ansible will proceed as normal
 
-  # terminate ec2 instances tagged/named "ansible_demo" by declaring a goal state of absent (terminated)
-  # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html
-  - name: terminate existing ansible_demo instances
-    amazon.aws.ec2_instance:
-      state: absent
-      region: "{{ lookup('ansible.builtin.env', 'region') }}"
-      filters:
-        "tag:Name": "ansible_demo"
-      aws_access_key: "{{ lookup('ansible.builtin.env', 'access_key') }}"
-      aws_secret_key: "{{ lookup('ansible.builtin.env', 'secret_key') }}"
+# terminate GCP instances tagged/named "instance-1" by declaring a goal state of absent (terminated)
+- name: terminate existing instance-1 instances
+  community.general.gcp_compute_instance:
+    name: "instance-1"
+    zone: "{{ lookup('ansible.builtin.env','zone') }}"
+    project: "{{ lookup('ansible.builtin.env','PROJECT_ID') }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ lookup('ansible.builtin.env','CREDENTIALS_FILE') }}"
+    state: absent
 
   # look-up the list of subnets and register the output and store it as variable "subnet_info"
   # https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_vpc_subnet_info_module.html
