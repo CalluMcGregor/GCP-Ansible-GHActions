@@ -40,6 +40,10 @@
   copy:
     src: ./unicorn_gif2.gif
     dest: "/var/www/html/unicorn_gif2.gif"
+- name: copy sparkles.gif
+  copy:
+    src: ./sparkles.gif
+    dest: "/var/www/html/sparkles.gif"
 - name: start apache2
   service:
     name: apache2
