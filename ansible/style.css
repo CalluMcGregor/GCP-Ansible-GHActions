@@ -1,13 +1,3 @@
-nav {
-    border-bottom: 5px solid rgb(194, 108, 148);
-    font-size: 25px;
-    cursor: url('cursor_uni.svg'), auto;
-}
-
-.navbar-brand {
-    font-size: 30px;
-}
-
 body{
     background-image: url('background.png');
     background-size: cover;
