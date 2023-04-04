@@ -8,8 +8,40 @@
   copy:
     src: ./index.html
     dest: "/var/www/html/index.html"
+- name: copy code
+  copy:
+    src: ./style.css
+    dest: "/var/www/html/style.css"
+- name: copy background.png
+  copy:
+    src: ./background.png
+    dest: "/var/www/html/background.png"
+- name: copy cursor_uni.svg
+  copy:
+    src: ./cursor_uni.svg
+    dest: "/var/www/html/cursor_uni.svg"
+- name: copy gif1.gif
+  copy:
+    src: ./gif1.gif
+    dest: "/var/www/html/gif1.gif"
+- name: copy gif2.gif
+  copy:
+    src: ./gif2.gif
+    dest: "/var/www/html/gif2.gif"
+- name: copy gif3.gif
+  copy:
+    src: ./gif3.gif
+    dest: "/var/www/html/gif3.gif"
+- name: copy unicorn_gif.gif
+  copy:
+    src: ./unicorn_gif.gif
+    dest: "/var/www/html/unicorn_gif.gif"
+- name: copy unicorn_gif2.gif
+  copy:
+    src: ./unicorn_gif.gif
+    dest: "/var/www/html/unicorn_gif.gif"
 - name: start apache2
   service:
     name: apache2
     state: started
-    
+
