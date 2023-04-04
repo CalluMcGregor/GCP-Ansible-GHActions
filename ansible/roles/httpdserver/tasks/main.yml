@@ -38,8 +38,8 @@
     dest: "/var/www/html/unicorn_gif.gif"
 - name: copy unicorn_gif2.gif
   copy:
-    src: ./unicorn_gif.gif
-    dest: "/var/www/html/unicorn_gif.gif"
+    src: ./unicorn_gif2.gif
+    dest: "/var/www/html/unicorn_gif2.gif"
 - name: start apache2
   service:
     name: apache2
